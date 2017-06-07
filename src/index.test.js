@@ -1,6 +1,6 @@
 import React from 'react'
 import Img from './index.js'
-import {shallow} from 'enzyme'
+import { shallow } from 'enzyme'
 
 test('render with no opts', () => {
 	expect(shallow(<Img />).html()).toEqual(null)

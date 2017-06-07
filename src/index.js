@@ -5,6 +5,19 @@ import LRUCache from './LRUCache';
 // instantiate LRU Cache constructor
 const cache = new LRUCache(10);
 export default class Img extends Component {
+
+	static propTypes = {
+		loader: node,
+		unloader: node,
+		src: oneOfType([string, array])
+	}
+
+	static defaultProps = {
+		loader: false,
+		unloader: false,
+		src: []
+	}
+
 	constructor(props) {
 		super(props);
 
@@ -52,45 +65,49 @@ export default class Img extends Component {
 
 	onError() {
 
+		let size = this.imageList.length;
 		cache.set(this.state.currentIndex, false);
+		cache.set(this.state.currentIndex + 1, true);
+		console.log(cache.convertToJSON())
 		// remove that item in question
 		//image probably at this point has not mounted - do nothing and return false
 		if (!this.i) {
 			return false;
 		};
 		// before loading the next image, check to see if it was ever loaded in the past
-		for (let nextIndex = this.state.currentIndex + 1; nextIndex < this.imageList.length; nextIndex++ ){
+		for (let nextIndex = this.state.currentIndex + 1; nextIndex < size; nextIndex++ ){
 			// get next image
 			let src = this.imageList[nextIndex];
-			// this is the next image that we have never seen - load it
+			// // this is the next image that we have never seen - load it
 			if (cache.get(nextIndex) !== src) {
 				this.setState({ currentIndex: nextIndex });
 				break;
 			}
-			// check the cache - if we know it exists, use it!
-			if (cache.get(nextIndex) === true || src) {
+			// // check the cache - if we know it exists, use it!
+			if (cache.get(nextIndex) === true) {
 				this.setState({
 					currentIndex: nextIndex,
 					isLoading: false,
 					isLoaded: true,
 				});
 				return true;
-			} 
+			}
 
-			if (cache.get(nextIndex) === false) {
+
+			// if we know it doesn't exist who is the key does not exist
+			if (cache.get(nextIndex) === false || (cache.get(nextIndex) instanceof Error)) {
 				// if we know it doesn't exist, skip and continue iterating
 				continue;
 			}
-		}
 
-		// currentIndex is zero based, length is 1 based.
-		// check if we are at the end of the collection
-		//  - set loading to false if we are.....
-		// terminamos
-		if (nextIndex === this.imageList.length) {
-			return this.setState({isLoading: false})
+			// currentIndex is zero based, length is 1 based.
+			// check if we are at the end of the collection
+			//  - set loading to false and loaded to if we are.....
+			// terminamos
+			if (nextIndex === size || cache.get(nextIndex) instanceof Error) {
+				return this.setState({ isLoading: false, isLoaded: false })
+			}
 		}
-
 		// otherwise, try the next image
 		this.loadImage();
 	}
@@ -100,6 +117,7 @@ export default class Img extends Component {
 		this.i.src = this.imageList[this.state.currentIndex];
 		this.i.onload = this.onLoad;
 		this.i.onerror = this.onError;
+		console.log(this.i.src)
 	}
 
 	removeImage() {
@@ -111,6 +129,7 @@ export default class Img extends Component {
 
 	componentDidMount() {
 		if (this.state.isLoading) {
+			console.log("in mount")
 			this.loadImage()
 		};
 	}
@@ -130,14 +149,17 @@ export default class Img extends Component {
 		// if src prop changed, restart the loading process
 		if (srcAdded.length || srcRemoved.length) {
 			this.imageList = src
-
-			// if we dont have any sources, jump directly to unloader
-			if (!src.length) return this.setState({isLoading: false, isLoaded: false})
-			this.setState({currentIndex: 0, isLoading: true, isLoaded: false}, this.loadImage)
 		}
+				// if we dont have any sources, jump directly to unloader
+		if (!src.length) {
+			return this.setState({isLoading: false, isLoaded: false})
+		}
+		this.setState({currentIndex: 0, isLoading: true, isLoaded: false}, this.loadImage)
+		console.log("C WILL RECEIVE ", this.state)
 	}
 
 	render() {
+		console.log(this.state)
 		// if we have loaded, show the image
 		if (this.state.isLoaded) {
 		// clear non image props
@@ -157,14 +179,3 @@ export default class Img extends Component {
 			}
 		}
 	}
-Img.propTypes = {
-	src: oneOfType([string, array]),
-	loader: node,
-	unloader: node
-};
-
-Img.defaultProps = {
-	src: [],
-	loader: false,
-	unloader: false,
-};
