@@ -77,7 +77,7 @@ test('componentWillReceiveProps', () => {
 test('componentWillReceiveProps no change', () => {
 	const i = shallow(<Img src="foo"/>)
 	i.setProps({src: 'foo'})
-	expect(i.state()).toEqual({currentIndex: 0, isLoading: false, isLoaded: true})
+	expect(i.state()).toEqual({currentIndex: 0, isLoading: true, isLoaded: false})
 })
 
 test('componentWillReceiveProps no src', () => {
