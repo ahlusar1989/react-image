@@ -1,149 +1,170 @@
-import React, {Component} from 'react'
-import { node, oneOfType, string, array } from 'prop-types'
+import React, { Component } from 'react';
+import { node, oneOfType, string, array } from 'prop-types';
+import LRUCache from './LRUCache';
 
-const cache = {}
-class Img extends Component {
-  static propTypes = {
-    loader: node,
-    unloader: node,
-    src: oneOfType([string, array])
-  }
+// instantiate LRU Cache constructor
+const cache = new LRUCache(10);
+export default class Img extends Component {
+	constructor(props) {
+		super(props);
 
-  static defaultProps = {
-    loader: false,
-    unloader: false,
-    src: []
-  }
+		// create image list
+		this.imageList = this.imageSourcesToArray(this.props.src);
+		// add images to Map k, v --> index, element
+		this.imageList.forEach((element, index) => cache.set(index, element));
+		// check cache to decide at which index to start
+		for (let i = 0; i < this.imageList.length; i++) {
+			// check for Error object ---> if it is apparent set state to Loaded
+			//just load it if it is not in there - this means the first time it is used
+			if ((cache.get(i) instanceof Error)) {
+				break;
+			}
+			if (cache.get(i) === true) {
+				this.state = { currentIndex: i, isLoading: false, isLoaded: true };
+				return true;
+			}
+		}
+		this.state = this.imageList.length
+			? // original operation: start at 0 and try to load
+			{ currentIndex: 0, isLoading: true, isLoaded: false }
+			: // if we dont have any sources, jump directly to loading state
+			// ---> see render call below
+			{ isLoading: false, isLoaded: false };
 
-  constructor (props) {
-    super(props)
+			this.onLoad = this.onLoad.bind(this);
+			this.onError = this.onError.bind(this);
+			this.loadImage = this.loadImage.bind(this);
+			this.removeImage = this.removeImage.bind(this);
+	}
 
-    this.sourceList = this.srcToArray(this.props.src)
+	//image src uri to array --> call in constructor in order to add images to LRU cache
+	imageSourcesToArray(src) {
+		return (Array.isArray(src) ? src : [src]).filter(x => x);
+	}
 
-    // check cache to decide at which index to start
-    for (let i = 0; i < this.sourceList.length; i++) {
-      // if we've never seen this image before, the cache wont help.
-      // no need to look further, just start loading
-      /* istanbul ignore else */
-      if (!(this.sourceList[i] in cache)) break
+	onLoad() {
+		// set that image in question to true
+		cache.set(this.state.currentIndex, true);
+		if (this.i) {
+			this.setState({ isLoaded: true })
+		};
+	}
 
-      // if we have loaded this image before, just load it again
-      /* istanbul ignore else */
-      if (cache[this.sourceList[i]] === true) {
-        this.state = {currentIndex: i, isLoading: false, isLoaded: true}
-        return true
-      }
-    }
+	onError() {
 
-    this.state = this.sourceList.length
-      // 'normal' opperation: start at 0 and try to load
-      ? {currentIndex: 0, isLoading: true, isLoaded: false}
-      // if we dont have any sources, jump directly to unloaded
-      : {isLoading: false, isLoaded: false}
-  }
+		cache.set(this.state.currentIndex, false);
+		// remove that item in question
+		//image probably at this point has not mounted - do nothing and return false
+		if (!this.i) {
+			return false;
+		};
+		// before loading the next image, check to see if it was ever loaded in the past
+		for (let nextIndex = this.state.currentIndex + 1; nextIndex < this.imageList.length; nextIndex++ ){
+			// get next image
+			let src = this.imageList[nextIndex];
 
-  srcToArray = src => (Array.isArray(src) ? src : [src]).filter(x => x)
+			// this is the next image that we have never seen - load it
+			if (cache.get(nextIndex) !== src) {
+				this.setState({ currentIndex: nextIndex });
+				break;
+			}
+			// check the cache - if we know it exists, use it!
+			else if ((cache.get(nextIndex) === true)) {
+				this.setState({
+					currentIndex: nextIndex,
+					isLoading: false,
+					isLoaded: true,
+				});
+				return true;
+			} 
 
-  onLoad = () => {
-    cache[this.sourceList[this.state.currentIndex]] = true
-    /* istanbul ignore else */
-    if (this.i) this.setState({isLoaded: true})
-  }
+			else if (cache.get(nextIndex) === false) {
+				// if we know it doesn't exist, skip and continue iterating
+				continue;
+			}
 
-  onError = () => {
-    cache[this.sourceList[this.state.currentIndex]] = false
-    // if the current image has already been destroyed, we are probably no longer mounted
-    // no need to do anything then
-    /* istanbul ignore else */
-    if (!this.i) return false
+			// currentIndex is zero based, length is 1 based.
+			// check if we are at the end of the collection
+			//  - set loading to false if we are.....
+			// terminamos
+			else if (nextIndex === this.imageList.length){
+				return this.setState({ isLoading: false });
+			}
+		}
+		// otherwise, try the next image
+		this.loadImage();
+	}
 
-    // before loading the next image, check to see if it was ever loaded in the past
-    for (var nextIndex = this.state.currentIndex + 1; nextIndex < this.sourceList.length; nextIndex++) {
-      // get next img
-      let src = this.sourceList[nextIndex]
+	loadImage() {
+		this.i = new Image();
+		this.i.src = this.imageList[this.state.currentIndex];
+		this.i.onload = this.onLoad;
+		this.i.onerror = this.onError;
+	}
 
-      // if we have never seen it, its the one we want to try next
-      if (!(src in cache)) {
-        this.setState({currentIndex: nextIndex})
-        break
-      }
+	removeImage() {
+		delete this.i.onerror;
+		delete this.i.onload;
+		delete this.i.src;
+		delete this.i;
+	}
 
-      // if we know it exists, use it!
-      if (cache[src] === true) {
-        this.setState({currentIndex: nextIndex, isLoading: false, isLoaded: true})
-        return true
-      }
+	componentDidMount() {
+		if (this.state.isLoading) {
+			this.loadImage()
+		};
+	}
 
-      // if we know it doesn't exist, skip it!
-      /* istanbul ignore else */
-      if (cache[src] === false) continue
-    }
+	componentWillUnmount() {
+		//cleanup any listeners
+		if (this.i) {
+			this.removeImage();
+		}
+	}
+	componentWillReceiveProps (nextProps) {
+		let src = this.imageSourcesToArray(nextProps.src);
 
-    // currentIndex is zero bases, length is 1 based.
-    // if we have no more sources to try, return - we are done
-    if (nextIndex === this.sourceList.length) return this.setState({isLoading: false})
+		let srcAdded = src.filter(s => this.imageList.indexOf(s) === -1);
+		let srcRemoved = this.imageList.filter(s => src.indexOf(s) === -1);
+		// if the source prop changed, restart the loading process
+		// if src prop changed, restart the loading process
+		if (srcAdded.length || srcRemoved.length) {
+			this.imageList = src
 
-    // otherwise, try the next img
-    this.loadImg()
-  }
+			// if we dont have any sources, jump directly to unloader
+			if (!src.length) return this.setState({isLoading: false, isLoaded: false})
+			this.setState({currentIndex: 0, isLoading: true, isLoaded: false}, this.loadImage)
+		}
+	}
 
-  loadImg = () => {
-    this.i = new Image()
-    this.i.src = this.sourceList[this.state.currentIndex]
-    this.i.onload = this.onLoad
-    this.i.onerror = this.onError
-  }
+	render() {
+		// if we have loaded, show the image
+		if (this.state.isLoaded) {
+		// clear non image props
+			let { src, unloader, loader, ...rest } = this.props; //eslint-disable-line
+			return <img src={this.imageList[this.state.currentIndex]} {...rest} />;
+		}
 
-  unloadImg = () => {
-    delete this.i.onerror
-    delete this.i.onload
-    delete this.i.src
-    delete this.i
-  }
+		// if we are still trying to load, show image and a backup component if requested
+		if (!this.state.isLoaded && this.state.isLoading) {
+			return this.props.loader ? this.props.loader : null;
+		}
+		// if we have given up on loading, show a place holder, or nothing
+		if (!this.state.isLoaded && !this.state.isLoading) {
+			return this.props.unloader
+				? this.props.unloader
+				: null;
+			}
+		}
+	}
+Img.propTypes = {
+	src: oneOfType([string, array]),
+	loader: node,
+	unloader: node
+};
 
-  componentDidMount () {
-    // kick off process
-    /* istanbul ignore else */
-    if (this.state.isLoading) this.loadImg()
-  }
-
-  componentWillUnmount () {
-    // ensure that we dont leave any lingering listeners
-    /* istanbul ignore else */
-    if (this.i) this.unloadImg()
-  }
-
-  componentWillReceiveProps (nextProps) {
-    let src = this.srcToArray(nextProps.src)
-
-    let srcAdded = src.filter(s => this.sourceList.indexOf(s) === -1)
-    let srcRemoved = this.sourceList.filter(s => src.indexOf(s) === -1)
-
-    // if src prop changed, restart the loading process
-    if (srcAdded.length || srcRemoved.length) {
-      this.sourceList = src
-
-      // if we dont have any sources, jump directly to unloader
-      if (!src.length) return this.setState({isLoading: false, isLoaded: false})
-      this.setState({currentIndex: 0, isLoading: true, isLoaded: false}, this.loadImg)
-    }
-  }
-
-  render () {
-    // if we have loaded, show img
-    if (this.state.isLoaded) {
-      // clear non img props
-      let {src, loader, unloader, ...rest} = this.props //eslint-disable-line
-      return <img src={this.sourceList[this.state.currentIndex]} {...rest} />
-    }
-
-    // if we are still trying to load, show img and a loader if requested
-    if (!this.state.isLoaded && this.state.isLoading) return this.props.loader ? this.props.loader : null
-
-    // if we have given up on loading, show a place holder if requested, or nothing
-    /* istanbul ignore else */
-    if (!this.state.isLoaded && !this.state.isLoading) return this.props.unloader ? this.props.unloader : null
-  }
-}
-
-export default Img
+Img.defaultProps = {
+	src: [],
+	loader: false,
+	unloader: false,
+};
