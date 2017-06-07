@@ -62,14 +62,13 @@ export default class Img extends Component {
 		for (let nextIndex = this.state.currentIndex + 1; nextIndex < this.imageList.length; nextIndex++ ){
 			// get next image
 			let src = this.imageList[nextIndex];
-
 			// this is the next image that we have never seen - load it
 			if (cache.get(nextIndex) !== src) {
 				this.setState({ currentIndex: nextIndex });
 				break;
 			}
 			// check the cache - if we know it exists, use it!
-			else if ((cache.get(nextIndex) === true)) {
+			if (cache.get(nextIndex) === true || src) {
 				this.setState({
 					currentIndex: nextIndex,
 					isLoading: false,
@@ -78,19 +77,20 @@ export default class Img extends Component {
 				return true;
 			} 
 
-			else if (cache.get(nextIndex) === false) {
+			if (cache.get(nextIndex) === false) {
 				// if we know it doesn't exist, skip and continue iterating
 				continue;
 			}
-
-			// currentIndex is zero based, length is 1 based.
-			// check if we are at the end of the collection
-			//  - set loading to false if we are.....
-			// terminamos
-			else if (nextIndex === this.imageList.length){
-				return this.setState({ isLoading: false });
-			}
 		}
+
+		// currentIndex is zero based, length is 1 based.
+		// check if we are at the end of the collection
+		//  - set loading to false if we are.....
+		// terminamos
+		if (nextIndex === this.imageList.length) {
+			return this.setState({isLoading: false})
+		}
+
 		// otherwise, try the next image
 		this.loadImage();
 	}

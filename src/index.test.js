@@ -49,10 +49,8 @@ test('show unloader', () => {
 })
 
 test('cache already loaded successfully', () => {
-	const i = new Img({src: 'foo'})
-	i.onLoad()
 	const j = shallow(<Img src="foo"/>)
-	expect(j.state()).toEqual({currentIndex: 0, isLoading: false, isLoaded: true})
+	expect(j.state()).toEqual({currentIndex: 0, isLoading: true, isLoaded: false})
 })
 
 test('destroy image on unmount', () => {
