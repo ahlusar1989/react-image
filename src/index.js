@@ -84,7 +84,7 @@ export default class Img extends Component {
 
 			// this can only occur if we have seen this before
 			// use this next item
-			else if(cache.get(nextIndex) === true || !(cache.get(nextIndex) !== src)){
+			else if(cache.get(nextIndex) === true || (cache.get(nextIndex) == src)){
 				console.log("in true")
 				this.setState({
 					currentIndex: nextIndex, 
