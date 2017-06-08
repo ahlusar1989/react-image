@@ -32,7 +32,7 @@ export default class Img extends Component {
 			if ((cache.get(i) instanceof Error)) {
 				break;
 			}
-			if (cache.get(i) === true) {
+			else if (cache.get(i) === true) {
 				this.state = { currentIndex: i, isLoading: false, isLoaded: true };
 				return true;
 			}
@@ -46,8 +46,6 @@ export default class Img extends Component {
 
 			this.onLoad = this.onLoad.bind(this);
 			this.onError = this.onError.bind(this);
-			this.loadImage = this.loadImage.bind(this);
-			this.removeImage = this.removeImage.bind(this);
 	}
 
 	//image src uri to array --> call in constructor in order to add images to LRU cache
@@ -64,7 +62,6 @@ export default class Img extends Component {
 	}
 
 	onError() {
-
 		let size = this.imageList.length;
 		cache.set(this.state.currentIndex, false);
 		// cache.set(this.state.currentIndex + 1, true);
@@ -79,38 +76,38 @@ export default class Img extends Component {
 			let src = this.imageList[nextIndex];
 			// since we just set the new image in the cache it has to be an  
 			// image that we have never seen - load it
-			if (cache.get(nextIndex) !== true) {
+			if ((cache.get(nextIndex)) === src) {
+				console.log("here in src")
 				this.setState({ currentIndex: nextIndex });
 				break;
 			}
-			// console.log(cache.convertToJSON())
-			// // check the cache - if we know it exists, use it!
-			if (cache.get(nextIndex) === true || cache.get(nextIndex) === src) {
+
+			// this can only occur if we have seen this before
+			// use this next item
+			else if(cache.get(nextIndex) === true || !(cache.get(nextIndex) !== src)){
+				console.log("in true")
 				this.setState({
-					currentIndex: nextIndex,
-					isLoading: false,
-					isLoaded: true,
-				});
+					currentIndex: nextIndex, 
+					isLoading: false, 
+					isLoaded: true
+				})
+				console.log(this.state)
 				return true;
 			}
 
-
-			// if we know it doesn't exist who is the key does not exist
-			if (cache.get(nextIndex) === false && (cache.get(nextIndex) !== src)) {
-				// if we know it doesn't exist, skip and continue iterating
+			// if it doesn't just skip it 
+			if (cache.get(nextIndex) === false) {
+				"in false"
 				continue;
 			}
-
-			// currentIndex is zero based, length is 1 based.
-			// check if we are at the end of the collection
-			//  - set loading to false and loaded to if we are.....
-			// terminamos
-			if (nextIndex === size || cache.get(nextIndex) instanceof Error) {
-				return this.setState({ isLoading: false, isLoaded: false })
+			// currentIndex is zero bases, length is 1 based.
+			// if we have no more sources to try, return - we are done
+			if (nextIndex === size) {
+				console.log("here in size check")
+				return this.setState({isLoading: false})
 			}
 		}
-		// otherwise, try the next image
-		this.loadImage();
+		// this.loadImage();
 	}
 
 	loadImage() {
