@@ -1,4 +1,5 @@
-// Citing: https://blogs.dropbox.com/tech/2012/10/caching-in-theory-and-practice/
+// Influenced heavily by:
+// https://blogs.dropbox.com/tech/2012/10/caching-in-theory-and-practice/
 
 class Node {
 	constructor(key, value) {
@@ -51,7 +52,7 @@ export default class LRUCache {
 	/* Resets the entire cache - Argument limit is optional to be reset */
 	removeAll(limit) {
 		this.size = 0;
-		this.map = {};
+		this.map = new Map();
 		this.head = null;
 		this.tail = null;
 		if (typeof limit == 'number') {
@@ -117,7 +118,7 @@ export default class LRUCache {
 		this.setHead(node);
 	}
 
-  /* Traverse through the cache elements using a callback function
+	/* Traverse through the cache elements using a callback function
 	 * Returns args [node element, element number, cache instance] for the callback function to use
 	*/
 	forEach(callback) {
@@ -130,7 +131,7 @@ export default class LRUCache {
 		}
   }
 
-		/* Returns a JSON representation of the cache */
+	/* Returns a JSON representation of the cache */
 	convertToJSON() {
 		let json = [];
 		let node = this.head;
